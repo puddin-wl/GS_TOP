@@ -1,56 +1,106 @@
 # GS_TOP
 
-GS_TOP 是一个 MATLAB DOE/GS 仿真项目，用于 `532 nm` 中心场、正入射、连续相位 DOE 的矩形平顶光设计与评估。
+`GS_TOP` is a MATLAB simulation project for rectangular flat-top beam shaping with a continuous-phase DOE at `532 nm`.
 
-当前版本包含三层能力：
+The project currently focuses on:
 
-- 标准 GS 理想相位设计
-- `DOE -> 场镜 -> 焦平面` 的系统传播评估
-- `R_in` 与 `L1` 的参数扫描
+- standard `GS` phase retrieval and DOE phase design
+- physical propagation from `DOE -> F-theta lens -> focal plane`
+- initial tolerance studies on `R_in` and `L1`
+- saved artifacts for later comparison and iteration
 
-## Current Model Scope
+## What This Repo Is For
 
-- 目标光斑：硬边矩形 `330 um × 120 um`
-- 入射光束：高斯光，`5 mm @ 1/e^2`
-- 默认波前：平面波，`R_in = Inf`
-- 场镜：`JENar APTAline 429-532-339 AL`
-- 焦距：`429 mm`
-- 中心场、正入射
-- 连续相位 DOE
-- 不含 SLM
-- 不含振镜离轴扫描
-- 不含可制造多级相位和工艺容差
+Target requirement:
 
-## Main Entry Points
+- rectangular hard-edge spot
+- target size: `330 um x 120 um`
+- wavelength: `532 nm`
+- center field only
+- normal incidence only
+
+Primary acceptance metrics:
+
+- RMS nonuniformity `<= 5%`
+- ROI diffraction efficiency `>= 95%`
+
+The current codebase already saves:
+
+- DOE phase maps
+- focal-plane intensity maps
+- target vs output comparisons
+- center-line profiles
+- convergence plots
+- text and image metric summaries
+- MAT result files
+
+## Repo Layout
 
 - `gs_top_default_config.m`
-  生成默认配置 `cfg`
-- `gs_top_add_paths.m`
-  将项目根目录和 `src/` 加入 MATLAB 路径
-- `gs_top_load_bgdata.m`
-  读取 Spiricon `.bgData` 实测光斑文件，并提取像素标定、D4Sigma 束宽和图像矩阵
+  default project configuration
 - `gs_top_run.m`
-  跑一次完整设计与评估，并保存图表与 MAT 结果
+  run one full simulation and save outputs
 - `gs_top_sweep.m`
-  扫描 `R_in` 和 `L1`，输出趋势图和热图
+  run `R_in` / `L1` sweeps and save outputs
+- `gs_top_load_bgdata.m`
+  load a Spiricon `.bgData` beam measurement file
+- `gs_top_add_paths.m`
+  add the repo root and `src/` to the MATLAB path
+- `run_initial_simulations.m`
+  run the initial simulation batch and save a suite summary
 - `run_tests.m`
-  运行基础单元测试
+  run MATLAB unit tests
+- `src/`
+  internal functions
+- `docs/`
+  planning notes and external input references
+- `inputs/`
+  suggested location for copied external inputs
+- `artifacts/`
+  saved simulation outputs
+
+## External Inputs Already Reflected
+
+Optical path layout currently referenced:
+
+- output to mirror 1: `150 mm`
+- mirror 1 to mirror 2: `380 mm`
+- mirror 2 to expander: `140 mm`
+- expander to DOE: `70 mm`
+- DOE to scanner: `150 mm`
+
+Current F-theta lens reference:
+
+- model: `JENar APTAline 429-532-339 AL`
+- focal length: `429 mm`
+- wavelength: `532 nm`
+- input beam: `16 mm @ 1/e^2`
+- focus size: `26.9 um @ 1/e^2`
+
+Current Spiricon beam reference:
+
+- file type: `.bgData`
+- image size: `1928 x 1448`
+- pixel pitch: `3.69 um`
+- beam width basis: `D4Sigma`
+- extracted D4Sigma width: about `2.008 mm x 1.930 mm`
+
+See also:
+
+- [Project Plan](/E:/program/GS_TOP/docs/PLAN.md)
+- [Input Sources](/E:/program/GS_TOP/docs/INPUT_SOURCES.md)
+- [Runbook](/E:/program/GS_TOP/docs/RUNBOOK.md)
 
 ## Quick Start
+
+Run one simulation:
 
 ```matlab
 cfg = gs_top_default_config();
 result = gs_top_run(cfg);
 ```
 
-运行容差扫描：
-
-```matlab
-cfg = gs_top_default_config();
-sweep = gs_top_sweep(cfg);
-```
-
-导入实测高斯光斑：
+Run with measured beam input:
 
 ```matlab
 cfg = gs_top_default_config();
@@ -59,68 +109,20 @@ cfg.beam.use_measured_profile = true;
 result = gs_top_run(cfg);
 ```
 
-运行测试：
+Run the initial batch:
+
+```matlab
+suite = run_initial_simulations();
+```
+
+Run tests:
 
 ```matlab
 results = run_tests();
 ```
 
-## Output Metrics
+## Current Status
 
-程序固定输出以下指标：
+The framework is stable and saves results correctly, but the default configuration does **not** yet meet the final acceptance targets.
 
-- `50%` 等值线尺寸
-- `13.5%` 等值线尺寸
-- `13.5% -> 90%` 边缘过渡宽度
-- ROI 内 RMS 非均匀性
-- `Uniformity_score = (1 - std/mean) * 100%`
-- ROI 衍射效率
-- ROI 外能量泄漏
-- 总输出效率
-- 功率、单脉冲能量、峰值辐照度、fluence 报表
-
-## Repository Layout
-
-- `src/`
-  内部仿真函数、传播模型、指标计算、绘图函数
-- `tests/`
-  MATLAB 单元测试
-- `docs/`
-  计划与外部输入资料说明
-- `inputs/`
-  外部 PDF、测量文件、光路图的建议存放位置
-- `artifacts/`
-  仿真输出图片、MAT 文件和报表
-
-## External Inputs
-
-当前项目已经对接以下外部资料口径：
-
-- 光路图：
-  输出口到第一反射镜 `150 mm`，
-  第一反射镜到第二反射镜 `380 mm`，
-  第二反射镜到扩束镜 `140 mm`，
-  扩束镜到 DOE `70 mm`，
-  DOE 到振镜 `150 mm`
-- 场镜规格：
-  焦距 `429 mm`，
-  波长 `532 nm`，
-  输入光束 `16 mm @ 1/e^2`，
-  聚焦光斑 `26.9 um @ 1/e^2`
-- Spiricon `.bgData` 测量：
-  图像尺寸 `1928 × 1448`，
-  像素标定 `3.69 um/pixel`，
-  束宽基准 `D4Sigma`，
-  近似 D4Sigma 束宽约 `2.008 mm × 1.930 mm`
-
-更多来源说明见：
-
-- [PLAN.md](/E:/program/GS_TOP/docs/PLAN.md)
-- [INPUT_SOURCES.md](/E:/program/GS_TOP/docs/INPUT_SOURCES.md)
-
-## Default Acceptance Targets
-
-- RMS 非均匀性 `<= 5%`
-- ROI 衍射效率 `>= 95%`
-
-如果默认参数下未达到门限，程序仍会输出最佳结果、完整指标和失败标记。
+That is expected at this stage: the next engineering step is to improve the design loop, constraints, and physical scaling so the output converges toward the required `330 um x 120 um` flat-top specification.

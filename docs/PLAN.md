@@ -1,67 +1,81 @@
-# GS_TOP MATLAB DOE/GS 仿真项目计划
+# GS_TOP Project Plan
 
-## Summary
-- 在 `E:\program\GS_TOP` 建立 MATLAB 项目 `GS_TOP`，面向 `532 nm` 中心场、正入射、连续相位 DOE 的完整仿真。
-- 设计算法采用标准 `GS`，参考现有 `wgs.m` 的 FFT 往返框架，但不使用加权更新。
-- 本版包含三层：
-  1. 理想相位 DOE 设计
-  2. 真实系统传播评估
-  3. `R_in` 与 `L1` 容差扫描
-- 本版不含 SLM、不含可制造多级 DOE、不含振镜扫描离轴场。
+## Goal
 
-## Key Changes
-- 建立统一输入接口 `cfg`，至少包含：
-  `project.name`、`source.lambda_nm`、`source.pulse_width_ps`、`source.rep_rate_hz`、`source.power_w`、`source.M2`、`beam.diameter_1e2_mm`、`beam.profile`、`beam.R_in_mm`、`system.L1_mm`、`lens.f_mm`、`target.width_um`、`target.height_um`、`solver.iterations`、`solver.random_seed`、`metrics.rms_limit`、`metrics.efficiency_limit`、`sweep.R_in_mm_list`、`sweep.L1_mm_list`。
-- 固定默认物理参数：
-  `lambda = 532 nm`，`L1 = 200 mm`，`f = 420 mm`，中心场，目标面为焦平面，入射束为 `5 mm @ 1/e^2` 高斯，`R_in = Inf` 默认为平面波。
-- 设计层使用 GS 迭代：
-  DOE 面施加入射高斯幅度约束，目标面施加硬边矩形幅度约束，输出连续相位、收敛曲线和最佳解。
-- 评估层使用物理传播模型：
-  以 DOE 面物理尺寸、`DOE -> 场镜 -> 焦平面` 的传播链计算真实单位下的目标面强度分布；设计层与评估层分离。
-- 指标体系按工业口径固定为：
-  `50%` 等值线尺寸为主尺寸指标；
-  `13.5%` 等值线尺寸为补充尺寸；
-  `13.5% -> 90%` 过渡宽度为边缘指标；
-  ROI 内 `RMS 非均匀性` 为主均匀性指标；
-  输出 `Uniformity_score = (1 - std/mean) * 100%`；
-  ROI 衍射效率为主效率指标；
-  同时输出 ROI 外能量泄漏与总输出效率。
-- 尺寸误差判定固定为：
-  用二维强度图的 `50%` 等值线提取外接矩形宽高，与 `330 um × 120 um` 比较，误差门限 `±5 um`。
-- 验收门限固定为：
-  `RMS 非均匀性 <= 5%`，`ROI 衍射效率 >= 95%`；边缘过渡宽度先评估不设硬门限。
-- 功率相关内容只做计算接口，不作为当前验收门限：
-  输出平均功率、单脉冲能量、峰值功率密度、fluence 等报表，便于后续补真实激光参数。
-- 容差扫描仅包含：
-  `R_in` 扫描与 `L1` 扫描，支持单变量曲线和二维热图。
-- 项目入口固定为：
-  `gs_top_default_config.m` 生成默认配置；
-  `gs_top_run.m` 执行一次完整设计与评估；
-  `gs_top_sweep.m` 执行容差扫描；
-  配套若干内部函数负责网格建立、GS 迭代、传播、指标计算和绘图。
-- 输出结果固定包含：
-  DOE 相位图、目标面二维强度图、目标/输出对比图、横纵截线、收敛曲线、指标汇总表、`R_in` 扫描图、`L1` 扫描图、二维容差热图、MAT 结果文件、README。
+Build a MATLAB DOE simulation workflow for a `532 nm` rectangular flat-top beam shaping task using a standard `GS` design loop.
 
-## Test Plan
-- 用人工构造的理想矩形强度图验证：
-  `50%` 尺寸、`13.5%` 尺寸、`13.5%-90%` 过渡宽度、RMS 非均匀性、ROI 效率、泄漏能量计算是否正确。
-- 用默认配置跑通一次完整 MATLAB 仿真，验证：
-  程序可运行、相位可输出、图表可生成、MAT 文件可保存、指标报表完整。
-- 对传播链做数值检查：
-  验证采样映射、能量归一化、传播前后总能量变化在允许误差内。
-- 对容差分析做回归检查：
-  `R_in` 与 `L1` 扫描结果连续、默认设计点可标注、`Inf` 曲率可稳定处理。
-- 若默认参数下达不到门限，程序必须返回：
-  最佳结果、完整指标、失败标记，不允许静默失败。
+Final target:
 
-## Assumptions
-- 需求以 `DOE定制.docx` 为准，目标固定为 `330 um × 120 um` 硬边矩形。
-- 场镜规格按最新 PDF `f-theta-739668-429-532-339-al.pdf` 建模，焦距取 `429 mm`。
-- 只考虑中心场、正入射，不建振镜扫描模型。
-- DOE 先按连续相位处理，不考虑多级化与制造公差。
-- 默认激光占位参数采用：
-  `10 ps`、`1 MHz`、`120 W`、`M² = 1.1`、线偏振。
-- `R_in` 约定为：
-  `Inf` 平面波，正值会聚，负值发散。
-- GitHub 仓库名固定为 `GS_TOP`。
-- 当前 `E:\program\GS_TOP` 还不是 git 仓库；执行阶段将初始化仓库并发布到 GitHub。
+- spot shape: rectangle
+- spot size: `330 um x 120 um`
+- target plane: F-theta focal plane
+- center field only
+- normal incidence only
+
+## Simulation Scope
+
+This repo is intended to support three levels of work:
+
+1. ideal continuous-phase DOE design
+2. physical propagation evaluation through the optical chain
+3. tolerance studies on key first-order variables
+
+Out of scope for the current version:
+
+- SLM validation
+- scanner field scanning
+- off-axis field points
+- DOE fabrication quantization
+- etch-depth / process tolerance modeling
+
+## Core Model Decisions
+
+- algorithm: standard `GS`, not weighted `WGS`
+- DOE model: continuous phase
+- input beam baseline: Gaussian, `5 mm @ 1/e^2`
+- wavefront curvature: parameterized through `R_in`
+- system distance: parameterized through `L1`
+- lens reference: `429 mm` F-theta lens
+- target metric basis:
+  - main size at `50%`
+  - secondary size at `13.5%`
+  - edge width from `13.5% -> 90%`
+  - RMS nonuniformity in ROI
+  - ROI diffraction efficiency
+
+## Acceptance Targets
+
+- RMS nonuniformity `<= 5%`
+- ROI diffraction efficiency `>= 95%`
+- `50%` size error within `+/- 5 um`
+
+If a run does not meet the targets, the code must still:
+
+- save the result
+- save all metrics
+- clearly mark the run as failed
+
+## Current File Roles
+
+- `gs_top_default_config.m`
+  build the default config
+- `gs_top_run.m`
+  execute one saved run
+- `gs_top_sweep.m`
+  execute saved tolerance sweeps
+- `run_initial_simulations.m`
+  execute the initial simulation batch
+- `src/`
+  internal numerical and plotting functions
+- `artifacts/`
+  saved output folders
+
+## Next Optimization Work
+
+The current implementation is ready for iterative engineering work. The most likely next improvements are:
+
+- refine target-plane scaling in the GS loop
+- improve amplitude constraints and normalization
+- add better aperture and lens pupil handling
+- compare ideal Gaussian input vs measured beam input
+- use sweep results to identify better `R_in` and `L1` starting points
