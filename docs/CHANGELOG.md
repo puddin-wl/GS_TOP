@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-04-24 - Target-power MRAF efficiency/RMS optimization
+
+Goal:
+
+- Start optimizing against the actual flat-top objectives after the first MRAF
+  implementation proved functional but not yet performant.
+
+Changed:
+
+- Added `cfg.solver.mraf.scale_mode = 'target_power'` so MRAF can scale the
+  target amplitude from a desired ROI power fraction instead of only matching the
+  current signal-region mean amplitude.
+- Added `cfg.solver.mraf.target_efficiency` and
+  `cfg.solver.mraf.noise_suppression_factor` for efficiency recovery sweeps.
+- Increased the default efficiency score weight from `100` to `1000`.
+- Added `run_mraf_optimization_batch('focused')`, a short 1024-grid trade-off
+  sweep for target-power MRAF and noise suppression settings.
+- Updated high-resolution batch review selection so top score, top eval RMS, and
+  top inner RMS candidates can all reach the 2048-grid review stage.
+
+Validation:
+
+- `run_tests.m`: 7 passed, 0 failed, 0 incomplete.
+- `run_mraf_optimization_batch('focused')`: completed at
+  `artifacts/mraf_optimization_20260424_164831/`.
+- Best focused 1024-grid trade-off: `22.101%` eval RMS, `15.348%` inner RMS,
+  `87.387%` eval ROI efficiency, `92.365%` design efficiency.
+- High-resolution low-RMS check saved at `artifacts/run_20260424_165320/`:
+  `13.444%` eval RMS, `6.187%` inner RMS, `83.236%` eval ROI efficiency,
+  `88.970%` design efficiency.
+
+Interpretation:
+
+- MRAF plus target-power scaling now clearly reduces RMS relative to the fixed
+  GS baseline, especially at 2048 / 2.5 um sampling.
+- The remaining blocker is an efficiency/RMS trade-off: energy can be kept in the
+  design ROI near `90-93%`, but eval ROI efficiency is still below `95%`.
+- Inner ROI RMS near `6%` in high-res mode suggests platform speckle is close to
+  the target; eval RMS is still dominated by edge/transition behavior and
+  sampling.
+
 ## 2026-04-24 - MRAF solver and project hygiene batch
 
 Goal:

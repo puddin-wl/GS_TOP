@@ -17,6 +17,16 @@ batch = run_mraf_optimization_batch('smoke');
 The smoke mode uses a small grid and a few iterations. It validates the MATLAB
 execution path, batch table writing, best-result selection, and plot generation.
 
+Run a focused optimization trade-off sweep:
+
+```matlab
+batch = run_mraf_optimization_batch('focused');
+```
+
+The focused mode uses the 1024-grid physical sampling, target-power MRAF scaling,
+and a small set of noise-suppression candidates. Use it before the full batch
+when iterating on solver behavior.
+
 ## Baseline
 
 Run the fixed standard-GS physical baseline:
@@ -69,10 +79,12 @@ Stage 1 defaults:
 - MRAF soft-edge mix, edge width, and margin checks
 - MRAF super-Gaussian order/mix checks
 - initial phase and strength checks
+- target-power MRAF efficiency recovery checks
 
 Stage 2 defaults:
 
 - top 3-5 candidates from Stage 1
+- candidates with the best eval RMS and inner RMS can also enter review
 - `N = 2048`
 - `focus_sampling_um = 2.5`
 - `iterations = 500`

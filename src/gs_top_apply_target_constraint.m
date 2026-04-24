@@ -42,14 +42,7 @@ switch method
             error('GS_TOP:TargetSizeMismatch', 'Target amplitude and focal field sizes do not match.');
         end
 
-        if any(signal_mask(:))
-            mean_A = mean(A(signal_mask));
-            mean_T = mean(T(signal_mask));
-        else
-            mean_A = mean(A(:));
-            mean_T = mean(T(:));
-        end
-        scale = mean_A / max(mean_T, eps);
+        scale = local_mraf_scale(cfg, mraf_cfg, A, T, signal_mask, input_power);
 
         A_new = A;
         A_new(signal_mask) = mix * T(signal_mask) * scale + ...
@@ -62,7 +55,9 @@ switch method
             case 'free'
                 A_new(noise_mask) = A(noise_mask);
             case 'weak_suppress'
-                A_new(noise_mask) = 0.98 * A(noise_mask);
+                suppression_factor = local_get(mraf_cfg, 'noise_suppression_factor', 0.98);
+                suppression_factor = min(max(suppression_factor, 0), 1);
+                A_new(noise_mask) = suppression_factor * A(noise_mask);
             otherwise
                 error('GS_TOP:UnknownNoiseRegionMode', 'Unknown MRAF noise_region_mode: %s', noise_mode);
         end
@@ -87,6 +82,35 @@ if isfield(state, 'current_metrics') && isstruct(state.current_metrics)
     state.debug.rms_eval(iter_idx, 1) = local_metric(state.current_metrics, 'rms_nonuniformity_percent_eval');
     state.debug.roi_efficiency_eval(iter_idx, 1) = local_metric(state.current_metrics, 'roi_efficiency_eval');
     state.debug.score(iter_idx, 1) = local_metric(state.current_metrics, 'score');
+end
+end
+
+function scale = local_mraf_scale(cfg, mraf_cfg, A, T, signal_mask, input_power)
+scale_mode = lower(char(local_get(mraf_cfg, 'scale_mode', 'mean_signal')));
+switch scale_mode
+    case 'mean_signal'
+        if any(signal_mask(:))
+            mean_A = mean(A(signal_mask));
+            mean_T = mean(T(signal_mask));
+        else
+            mean_A = mean(A(:));
+            mean_T = mean(T(:));
+        end
+        scale = mean_A / max(mean_T, eps);
+
+    case 'target_power'
+        target_efficiency = local_get(mraf_cfg, 'target_efficiency', ...
+            local_get(local_get_struct(cfg, 'metrics'), 'efficiency_limit', 0.95));
+        target_efficiency = min(max(target_efficiency, 0), 1);
+        signal_power_basis = sum(abs(T(signal_mask)) .^ 2);
+        if signal_power_basis <= 0 || input_power <= 0
+            scale = local_mraf_scale(cfg, setfield(mraf_cfg, 'scale_mode', 'mean_signal'), A, T, signal_mask, input_power); %#ok<SFLD>
+        else
+            scale = sqrt(target_efficiency * input_power / signal_power_basis);
+        end
+
+    otherwise
+        error('GS_TOP:UnknownMrafScaleMode', 'Unknown MRAF scale_mode: %s', scale_mode);
 end
 end
 

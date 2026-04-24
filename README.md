@@ -92,6 +92,12 @@ Run a fast batch smoke check:
 batch = run_mraf_optimization_batch('smoke');
 ```
 
+Run a focused RMS/efficiency trade-off sweep:
+
+```matlab
+batch = run_mraf_optimization_batch('focused');
+```
+
 Run the budgeted MRAF optimization batch:
 
 ```matlab
@@ -135,3 +141,14 @@ The fixed physical baseline remains:
 The previously saved baseline in `artifacts/run_20260424_151447/` reported about
 `38.083%` RMS nonuniformity and `90.918%` ROI efficiency. MRAF/soft target work
 uses that result as the comparison point.
+
+Latest focused optimization checkpoint:
+
+- `artifacts/mraf_optimization_20260424_164831/`: best 1024-grid focused
+  trade-off was `22.101%` eval RMS and `87.387%` eval ROI efficiency.
+- `artifacts/run_20260424_165320/`: 2048-grid low-RMS check reached `13.444%`
+  eval RMS and `6.187%` inner RMS, with `83.236%` eval ROI efficiency.
+
+The current bottleneck is no longer basic GS convergence. It is the trade-off
+between edge/transition smoothness and keeping at least `95%` of the power inside
+the final eval ROI.

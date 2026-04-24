@@ -4,6 +4,7 @@ function batch = run_mraf_optimization_batch(mode)
 % Usage:
 %   batch = run_mraf_optimization_batch();
 %   batch = run_mraf_optimization_batch('smoke');
+%   batch = run_mraf_optimization_batch('focused');
 
 gs_top_add_paths();
 
@@ -31,6 +32,11 @@ if strcmp(mode, 'smoke')
     base_cfg.grid.focus_sampling_um = 10.0;
     base_cfg.solver.iterations = 3;
     base_cfg.solver.num_restarts = 1;
+elseif strcmp(mode, 'focused')
+    base_cfg.solver.iterations = 100;
+    base_cfg.solver.num_restarts = 1;
+    base_cfg.solver.allow_high_res_test = false;
+    base_cfg.solver.score.efficiency_weight = 2000.0;
 end
 
 stage1_specs = local_stage1_specs(mode);
@@ -51,16 +57,6 @@ end
 summary_table = struct2table(records);
 writetable(summary_table, fullfile(output_dir, 'summary.csv'));
 
-eligible = summary_table.roi_efficiency_eval >= 0.75;
-if any(eligible)
-    eligible_table = summary_table(eligible, :);
-else
-    eligible_table = summary_table;
-end
-[~, order] = sort(eligible_table.score, 'ascend');
-top_count = min(5, height(eligible_table));
-top_table = eligible_table(order(1:top_count), :);
-
 stage2_results = {};
 if ~strcmp(mode, 'smoke') && base_cfg.solver.allow_high_res_test
     high_cfg = base_cfg;
@@ -74,16 +70,16 @@ if ~strcmp(mode, 'smoke') && base_cfg.solver.allow_high_res_test
         error('GS_TOP:HighResApertureTooSmall', ...
             'High-resolution review reduced DOE aperture pixels.');
     end
-    stage2_count = min(5, height(top_table));
-    for idx = 1:stage2_count
-        spec = stage1_specs{top_table.case_index(idx)};
+    review_indices = local_high_res_review_indices(summary_table);
+    for idx = 1:numel(review_indices)
+        spec = stage1_specs{review_indices(idx)};
         spec.name = ['highres_' spec.name];
         case_cfg = local_apply_spec(high_cfg, spec);
         case_result = gs_top_execute(case_cfg);
         stage2_results{end + 1} = case_result; %#ok<AGROW>
         records(end + 1) = local_record_from_result(spec, 'stage2', case_result, numel(stage2_results)); %#ok<AGROW>
         fprintf('Stage 2 %d/%d: %s, score %.4g, RMS %.3f%%, eff %.3f%%\n', ...
-            idx, stage2_count, spec.name, case_result.metrics.score, ...
+            idx, numel(review_indices), spec.name, case_result.metrics.score, ...
             case_result.metrics.rms_nonuniformity_percent_eval, ...
             case_result.metrics.roi_efficiency_eval_percent);
     end
@@ -116,6 +112,16 @@ end
 function specs = local_stage1_specs(mode)
 specs = {};
 specs{end + 1} = local_spec('baseline_gs_random', 'gs', 'hard', NaN, 'random', 1, 3, 0, 0, 0, 12);
+
+if strcmp(mode, 'focused')
+    specs{end + 1} = local_mraf_spec('tp_free_m06', 'soft_edge', 0.6, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_free_m095', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup09', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.90, 'target_power', 0.98); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup08', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.80, 'target_power', 0.98); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup07', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.70, 'target_power', 0.98); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_weak_m085_margin2', 'soft_edge', 0.85, 'astigmatic_quadratic', 1, 3, 2, 1, 2, 12, 'weak_suppress', 0.75, 'target_power', 0.98); %#ok<AGROW>
+    return;
+end
 
 hard_mix = [0.4, 0.6, 0.8];
 for mix = hard_mix
@@ -156,6 +162,14 @@ for pidx = 1:numel(phase_types)
     end
 end
 
+for mix = [0.6, 0.8, 0.95]
+    for suppression_factor = [0.95, 0.90, 0.85, 0.80]
+        specs{end + 1} = local_mraf_spec(sprintf('tp_weak_m%g_sup%g', mix, suppression_factor), ...
+            'soft_edge', mix, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, ...
+            'weak_suppress', suppression_factor, 'target_power', 0.98); %#ok<AGROW>
+    end
+end
+
 if strcmp(mode, 'smoke')
     specs = specs(1:min(3, numel(specs)));
 end
@@ -173,6 +187,18 @@ spec.margin_x_um = margin_x;
 spec.margin_y_um = margin_y;
 spec.inner_margin_px = inner_margin_px;
 spec.super_gaussian_order = order;
+spec.noise_region_mode = 'free';
+spec.noise_suppression_factor = 1.0;
+spec.scale_mode = 'target_power';
+spec.target_efficiency = 0.95;
+end
+
+function spec = local_mraf_spec(name, design_mode, mix, initial_phase, strength, edge_px, margin_x, margin_y, inner_margin_px, order, noise_mode, suppression_factor, scale_mode, target_efficiency)
+spec = local_spec(name, 'mraf', design_mode, mix, initial_phase, strength, edge_px, margin_x, margin_y, inner_margin_px, order);
+spec.noise_region_mode = noise_mode;
+spec.noise_suppression_factor = suppression_factor;
+spec.scale_mode = scale_mode;
+spec.target_efficiency = target_efficiency;
 end
 
 function cfg = local_apply_spec(cfg, spec)
@@ -190,6 +216,10 @@ if strcmp(spec.method, 'gs')
     cfg.solver.initial_phase_dither_enabled = false;
 else
     cfg.solver.mraf.mix = spec.mix;
+    cfg.solver.mraf.noise_region_mode = spec.noise_region_mode;
+    cfg.solver.mraf.noise_suppression_factor = spec.noise_suppression_factor;
+    cfg.solver.mraf.scale_mode = spec.scale_mode;
+    cfg.solver.mraf.target_efficiency = spec.target_efficiency;
     cfg.solver.initial_phase_dither_enabled = true;
 end
 end
@@ -209,6 +239,10 @@ record.edge_softening_px = spec.edge_px;
 record.design_margin_x_um = spec.margin_x_um;
 record.design_margin_y_um = spec.margin_y_um;
 record.super_gaussian_order = spec.super_gaussian_order;
+record.noise_region_mode = string(spec.noise_region_mode);
+record.noise_suppression_factor = spec.noise_suppression_factor;
+record.scale_mode = string(spec.scale_mode);
+record.target_efficiency = spec.target_efficiency;
 record.N = result.cfg.grid.N;
 record.focus_sampling_um = result.cfg.grid.focus_sampling_um;
 record.iterations = result.cfg.solver.iterations;
@@ -240,6 +274,10 @@ record.edge_softening_px = NaN;
 record.design_margin_x_um = NaN;
 record.design_margin_y_um = NaN;
 record.super_gaussian_order = NaN;
+record.noise_region_mode = "";
+record.noise_suppression_factor = NaN;
+record.scale_mode = "";
+record.target_efficiency = NaN;
 record.N = NaN;
 record.focus_sampling_um = NaN;
 record.iterations = NaN;
@@ -273,6 +311,28 @@ if best_record.stage == "stage2"
 else
     best_result = stage1_results{best_record.stage_result_index};
 end
+end
+
+function review_indices = local_high_res_review_indices(summary_table)
+eligible = summary_table.roi_efficiency_eval >= 0.75;
+if any(eligible)
+    candidate_table = summary_table(eligible, :);
+else
+    candidate_table = summary_table;
+end
+
+review_indices = [];
+[~, score_order] = sort(candidate_table.score, 'ascend');
+review_indices = [review_indices; candidate_table.case_index(score_order(1:min(3, height(candidate_table))))]; %#ok<AGROW>
+
+[~, rms_eval_order] = sort(candidate_table.rms_eval, 'ascend');
+review_indices = [review_indices; candidate_table.case_index(rms_eval_order(1:min(2, height(candidate_table))))]; %#ok<AGROW>
+
+[~, rms_inner_order] = sort(candidate_table.rms_inner, 'ascend');
+review_indices = [review_indices; candidate_table.case_index(rms_inner_order(1:min(2, height(candidate_table))))]; %#ok<AGROW>
+
+review_indices = unique(review_indices, 'stable');
+review_indices = review_indices(1:min(5, numel(review_indices)));
 end
 
 function local_copy_best_plots(output_dir)

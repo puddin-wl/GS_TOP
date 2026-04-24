@@ -73,6 +73,9 @@ cfg.solver.num_restarts = 8;
 cfg.solver.mraf.enabled = true;
 cfg.solver.mraf.mix = 0.6;
 cfg.solver.mraf.noise_region_mode = 'free';
+cfg.solver.mraf.noise_suppression_factor = 0.95;
+cfg.solver.mraf.scale_mode = 'target_power';
+cfg.solver.mraf.target_efficiency = 0.95;
 cfg.solver.mraf.transition_width_px = 3;
 cfg.solver.mraf.guard_band_px = 4;
 
@@ -83,7 +86,7 @@ cfg.solver.initial_phase_dither_enabled = true;
 cfg.solver.initial_phase_dither_strength_rad = 0.1;
 
 cfg.solver.score.rms_weight = 1.0;
-cfg.solver.score.efficiency_weight = 100.0;
+cfg.solver.score.efficiency_weight = 1000.0;
 cfg.solver.score.size_weight = 0.1;
 cfg.solver.score.edge_weight = 0.0;
 cfg.solver.allow_high_res_test = true;

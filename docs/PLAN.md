@@ -27,6 +27,11 @@ The key design decision is that the noise region is not forced to zero in MRAF.
 This avoids the hard full-plane amplitude replacement that creates ringing and
 speckle for a small rectangular flat-top target.
 
+The current MRAF branch also supports target-power scaling. In that mode, the
+soft target amplitude is scaled from a desired global ROI power fraction before
+mixing. This is a pure simulation constraint and does not use camera feedback or
+pointwise measured-error correction.
+
 ## Solver Modes
 
 `cfg.solver.method = 'gs'`:
@@ -70,10 +75,24 @@ Interpretation:
 2. Run `run_fixed_physical_baseline()` when a fresh GS baseline is needed.
 3. Run `run_mraf_optimization_batch('smoke')` after code changes.
 4. Run `run_mraf_optimization_batch()` for budgeted screening.
-5. Compare `summary.csv`, top 5 score entries, and the best diagnostic figures.
+5. Compare `summary.csv`, top score entries, top eval RMS entries, top inner RMS
+   entries, and the best diagnostic figures.
 6. If RMS is still above target, classify the bottleneck as edge ringing, inner
    speckle, sampling, efficiency/RMS trade-off, aperture limitation, or target
    hardness.
+
+## Current Optimization Status
+
+As of the target-power MRAF checkpoint:
+
+- GS baseline remains near `38%` RMS and `91%` ROI efficiency.
+- 1024-grid focused MRAF reached about `22%` eval RMS and `87%` ROI efficiency.
+- 2048-grid low-RMS MRAF reached about `13%` eval RMS and `6%` inner RMS, but ROI
+  efficiency was about `83%`.
+
+This means the main open problem is efficiency recovery without returning to the
+hard-GS ringing state. The next experiments should focus on edge/transition
+placement, signal-region definition, and gradual noise suppression schedules.
 
 ## Version-Control Practice
 
