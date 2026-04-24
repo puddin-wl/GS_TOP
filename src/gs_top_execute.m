@@ -7,7 +7,7 @@ target = gs_top_make_target(cfg, grids);
 
 design = gs_top_run_gs(cfg, input_field, target, grids);
 evaluation = gs_top_evaluate_system(cfg, grids, input_field, design.best_phase);
-metrics = gs_top_compute_metrics(cfg, evaluation.intensity, grids, target);
+metrics = gs_top_compute_metrics(cfg, evaluation.intensity, grids, target, evaluation.focus_field);
 metrics.best_iter = design.best_iter;
 metrics.best_restart_idx = design.best_restart_idx;
 metrics = gs_top_compute_power_metrics(cfg, evaluation.intensity, grids, metrics);
@@ -15,7 +15,8 @@ metrics = gs_top_compute_power_metrics(cfg, evaluation.intensity, grids, metrics
 metrics.pass = metrics.rms_nonuniformity_percent_eval <= cfg.metrics.rms_limit && ...
     metrics.roi_efficiency_eval >= cfg.metrics.efficiency_limit && ...
     abs(metrics.size_50_x_um - cfg.target.width_um) <= cfg.metrics.size_error_limit_um && ...
-    abs(metrics.size_50_y_um - cfg.target.height_um) <= cfg.metrics.size_error_limit_um;
+    abs(metrics.size_50_y_um - cfg.target.height_um) <= cfg.metrics.size_error_limit_um && ...
+    ~metrics.is_forced_rejected;
 
 result.cfg = cfg;
 result.grids = grids;

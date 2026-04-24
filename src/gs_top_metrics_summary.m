@@ -9,6 +9,18 @@ lines = {
     sprintf('MRAF mix: %.3g', local_get(metrics, 'mraf_mix', NaN))
     sprintf('Best iteration/restart: %g / %g', local_get(metrics, 'best_iter', NaN), local_get(metrics, 'best_restart_idx', NaN))
     sprintf('Score: %.6g', local_get(metrics, 'score', NaN))
+    sprintf('Raw selection score: %.6g', local_get(metrics, 'raw_selection_score', NaN))
+    sprintf('Forced rejected: %d (%s)', local_get(metrics, 'is_forced_rejected', 0), local_format_reasons(local_get(metrics, 'rejection_reasons', {})))
+    sprintf('Dark hole p01/p05: %.3f / %.3f', local_get(metrics, 'hole_p01', NaN), local_get(metrics, 'hole_p05', NaN))
+    sprintf('Low-percentile warning / severe dark hole: %d / %d', local_get(metrics, 'has_low_percentile_warning', 0), local_get(metrics, 'severe_dark_hole', local_get(metrics, 'has_dark_hole', 0)))
+    sprintf('Dark point: row %.0f col %.0f, x %.3f um, y %.3f um, Imin/mean %.4g, winding %.3f turns', ...
+        local_get(metrics, 'dark_point_row', NaN), local_get(metrics, 'dark_point_col', NaN), ...
+        local_get(metrics, 'dark_point_x_um', NaN), local_get(metrics, 'dark_point_y_um', NaN), ...
+        local_get(metrics, 'dark_point_I_min_over_mean_eval', NaN), ...
+        local_get(metrics, 'dark_point_phase_winding_turns', NaN))
+    sprintf('Eval vortex count: %.0f', local_get(metrics, 'eval_vortex_count', NaN))
+    sprintf('Soft eval min: %.4g', local_get(metrics, 'soft_eval_min', NaN))
+    sprintf('Ghost class/penalty: %s / %.4g', local_get(metrics, 'ghost_classification', 'unknown'), local_get(metrics, 'ghost_penalty', NaN))
     sprintf('RMS eval ROI: %.3f %%', local_get(metrics, 'rms_nonuniformity_percent_eval', local_get(metrics, 'rms_nonuniformity_percent', NaN)))
     sprintf('RMS inner ROI: %.3f %%', local_get(metrics, 'rms_nonuniformity_percent_inner', NaN))
     sprintf('RMS legacy ROI: %.3f %%', local_get(metrics, 'rms_nonuniformity_percent_legacy', NaN))
@@ -35,5 +47,17 @@ function value = local_get(s, name, default_value)
 value = default_value;
 if isstruct(s) && isfield(s, name) && ~isempty(s.(name))
     value = s.(name);
+end
+end
+
+function text = local_format_reasons(reasons)
+if isempty(reasons)
+    text = 'none';
+elseif iscell(reasons)
+    text = strjoin(reasons, ', ');
+elseif isstring(reasons)
+    text = strjoin(cellstr(reasons), ', ');
+else
+    text = char(string(reasons));
 end
 end

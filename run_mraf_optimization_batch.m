@@ -48,8 +48,9 @@ for idx = 1:numel(stage1_specs)
     case_result = gs_top_execute(case_cfg);
     results{idx} = case_result;
     records(end + 1) = local_record_from_result(stage1_specs{idx}, 'stage1', case_result, idx); %#ok<AGROW>
-    fprintf('Stage 1 %d/%d: %s, score %.4g, RMS %.3f%%, eff %.3f%%\n', ...
+    fprintf('Stage 1 %d/%d: %s, score %.4g, raw %.4g, rejected %d, RMS %.3f%%, eff %.3f%%\n', ...
         idx, numel(stage1_specs), stage1_specs{idx}.name, case_result.metrics.score, ...
+        case_result.metrics.raw_selection_score, case_result.metrics.is_forced_rejected, ...
         case_result.metrics.rms_nonuniformity_percent_eval, ...
         case_result.metrics.roi_efficiency_eval_percent);
 end
@@ -78,8 +79,9 @@ if ~strcmp(mode, 'smoke') && base_cfg.solver.allow_high_res_test
         case_result = gs_top_execute(case_cfg);
         stage2_results{end + 1} = case_result; %#ok<AGROW>
         records(end + 1) = local_record_from_result(spec, 'stage2', case_result, numel(stage2_results)); %#ok<AGROW>
-        fprintf('Stage 2 %d/%d: %s, score %.4g, RMS %.3f%%, eff %.3f%%\n', ...
+        fprintf('Stage 2 %d/%d: %s, score %.4g, raw %.4g, rejected %d, RMS %.3f%%, eff %.3f%%\n', ...
             idx, numel(review_indices), spec.name, case_result.metrics.score, ...
+            case_result.metrics.raw_selection_score, case_result.metrics.is_forced_rejected, ...
             case_result.metrics.rms_nonuniformity_percent_eval, ...
             case_result.metrics.roi_efficiency_eval_percent);
     end
@@ -87,14 +89,24 @@ if ~strcmp(mode, 'smoke') && base_cfg.solver.allow_high_res_test
     writetable(summary_table, fullfile(output_dir, 'summary.csv'));
 end
 
-[best_record, best_result] = local_select_best(records, results, stage2_results);
+[best_records, best_results] = local_select_best_categories(records, results, stage2_results);
+best_low_rms_record = best_records.best_low_rms;
+best_balanced_record = best_records.best_balanced;
+best_high_efficiency_record = best_records.best_high_efficiency;
+best_low_rms = best_results.best_low_rms;
+best_balanced = best_results.best_balanced;
+best_high_efficiency = best_results.best_high_efficiency;
+best_record = best_balanced_record;
+best_result = best_balanced;
 best_metrics_summary = gs_top_metrics_summary(best_result.metrics);
 fid = fopen(fullfile(output_dir, 'best_metrics_summary.txt'), 'w');
 cleanup = onCleanup(@() fclose(fid));
 fprintf(fid, '%s\n', best_metrics_summary);
 clear cleanup;
 
-save(fullfile(output_dir, 'best_result.mat'), 'best_result', 'best_record', 'summary_table', '-v7.3');
+save(fullfile(output_dir, 'best_result.mat'), 'best_result', 'best_record', ...
+    'best_low_rms', 'best_low_rms_record', 'best_balanced', 'best_balanced_record', ...
+    'best_high_efficiency', 'best_high_efficiency_record', 'summary_table', '-v7.3');
 gs_top_plot_run_results(best_result, output_dir);
 local_copy_best_plots(output_dir);
 local_plot_comparison_table(summary_table, output_dir);
@@ -104,6 +116,8 @@ batch.mode = mode;
 batch.summary = summary_table;
 batch.best_record = best_record;
 batch.best_result = best_result;
+batch.best_records = best_records;
+batch.best_results = best_results;
 
 disp(best_metrics_summary);
 fprintf('Saved MRAF optimization batch to %s\n', output_dir);
@@ -114,12 +128,12 @@ specs = {};
 specs{end + 1} = local_spec('baseline_gs_random', 'gs', 'hard', NaN, 'random', 1, 3, 0, 0, 0, 12);
 
 if strcmp(mode, 'focused')
-    specs{end + 1} = local_mraf_spec('tp_free_m06', 'soft_edge', 0.6, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95); %#ok<AGROW>
-    specs{end + 1} = local_mraf_spec('tp_free_m095', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95); %#ok<AGROW>
-    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup09', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.90, 'target_power', 0.98); %#ok<AGROW>
-    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup08', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.80, 'target_power', 0.98); %#ok<AGROW>
-    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup07', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.70, 'target_power', 0.98); %#ok<AGROW>
-    specs{end + 1} = local_mraf_spec('tp_weak_m085_margin2', 'soft_edge', 0.85, 'astigmatic_quadratic', 1, 3, 2, 1, 2, 12, 'weak_suppress', 0.75, 'target_power', 0.98); %#ok<AGROW>
+    specs{end + 1} = local_mraf_spec('tp_free_m06', 'soft_edge', 0.6, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95);
+    specs{end + 1} = local_mraf_spec('tp_free_m095', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'free', 1.0, 'target_power', 0.95);
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup09', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.90, 'target_power', 0.98);
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup08', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.80, 'target_power', 0.98);
+    specs{end + 1} = local_mraf_spec('tp_weak_m095_sup07', 'soft_edge', 0.95, 'astigmatic_quadratic', 1, 4, 10, 5, 2, 12, 'weak_suppress', 0.70, 'target_power', 0.98);
+    specs{end + 1} = local_mraf_spec('tp_weak_m085_margin2', 'soft_edge', 0.85, 'astigmatic_quadratic', 1, 3, 2, 1, 2, 12, 'weak_suppress', 0.75, 'target_power', 0.98);
     return;
 end
 
@@ -248,6 +262,20 @@ record.focus_sampling_um = result.cfg.grid.focus_sampling_um;
 record.iterations = result.cfg.solver.iterations;
 record.num_restarts = result.cfg.solver.num_restarts;
 record.score = result.metrics.score;
+record.selection_score = result.metrics.selection_score;
+record.raw_selection_score = result.metrics.raw_selection_score;
+record.is_forced_rejected = result.metrics.is_forced_rejected;
+record.rejection_reasons = string(local_join_reasons(result.metrics.rejection_reasons));
+record.has_dark_hole = result.metrics.has_dark_hole;
+record.hole_p01 = result.metrics.hole_p01;
+record.hole_p05 = result.metrics.hole_p05;
+record.hole_penalty = result.metrics.hole_penalty;
+record.has_eval_optical_vortex = result.metrics.has_eval_optical_vortex;
+record.eval_vortex_count = result.metrics.eval_vortex_count;
+record.mask_bug_eval_not_signal = result.metrics.mask_bug_eval_not_signal;
+record.soft_edge_intrudes_eval = result.metrics.soft_edge_intrudes_eval;
+record.ghost_penalty = result.metrics.ghost_penalty;
+record.ghost_classification = string(result.metrics.ghost_classification);
 record.rms_eval = result.metrics.rms_nonuniformity_percent_eval;
 record.rms_inner = result.metrics.rms_nonuniformity_percent_inner;
 record.roi_efficiency_eval = result.metrics.roi_efficiency_eval;
@@ -283,6 +311,20 @@ record.focus_sampling_um = NaN;
 record.iterations = NaN;
 record.num_restarts = NaN;
 record.score = NaN;
+record.selection_score = NaN;
+record.raw_selection_score = NaN;
+record.is_forced_rejected = false;
+record.rejection_reasons = "";
+record.has_dark_hole = false;
+record.hole_p01 = NaN;
+record.hole_p05 = NaN;
+record.hole_penalty = NaN;
+record.has_eval_optical_vortex = false;
+record.eval_vortex_count = NaN;
+record.mask_bug_eval_not_signal = false;
+record.soft_edge_intrudes_eval = false;
+record.ghost_penalty = NaN;
+record.ghost_classification = "";
 record.rms_eval = NaN;
 record.rms_inner = NaN;
 record.roi_efficiency_eval = NaN;
@@ -295,26 +337,62 @@ record.best_iter = NaN;
 record.best_restart_idx = NaN;
 end
 
-function [best_record, best_result] = local_select_best(records, stage1_results, stage2_results)
+function [best_records, best_results] = local_select_best_categories(records, stage1_results, stage2_results)
 table_records = struct2table(records);
-eligible = table_records.roi_efficiency_eval >= 0.75;
-if any(eligible)
-    candidates = table_records(eligible, :);
+if ismember('is_forced_rejected', table_records.Properties.VariableNames)
+    not_rejected = ~table_records.is_forced_rejected;
+else
+    not_rejected = true(height(table_records), 1);
+end
+if any(not_rejected)
+    candidates = table_records(not_rejected, :);
 else
     candidates = table_records;
 end
-[~, idx] = min(candidates.score);
-best_record = candidates(idx, :);
 
-if best_record.stage == "stage2"
-    best_result = stage2_results{best_record.stage_result_index};
+best_records = struct();
+best_records.best_low_rms = local_pick_record(candidates, 'rms_eval', 'min');
+best_records.best_balanced = local_pick_balanced_record(candidates);
+best_records.best_high_efficiency = local_pick_record(candidates, 'roi_efficiency_eval', 'max');
+
+best_results = struct();
+best_results.best_low_rms = local_result_from_record(best_records.best_low_rms, stage1_results, stage2_results);
+best_results.best_balanced = local_result_from_record(best_records.best_balanced, stage1_results, stage2_results);
+best_results.best_high_efficiency = local_result_from_record(best_records.best_high_efficiency, stage1_results, stage2_results);
+end
+
+function record = local_pick_balanced_record(candidates)
+values = candidates.selection_score;
+if all(~isfinite(values))
+    values = candidates.raw_selection_score;
+end
+[~, idx] = min(values);
+record = candidates(idx, :);
+end
+
+function record = local_pick_record(candidates, field_name, direction)
+values = candidates.(field_name);
+if strcmp(direction, 'max')
+    [~, idx] = max(values);
 else
-    best_result = stage1_results{best_record.stage_result_index};
+    [~, idx] = min(values);
+end
+record = candidates(idx, :);
+end
+
+function result = local_result_from_record(record, stage1_results, stage2_results)
+if record.stage == "stage2"
+    result = stage2_results{record.stage_result_index};
+else
+    result = stage1_results{record.stage_result_index};
 end
 end
 
 function review_indices = local_high_res_review_indices(summary_table)
 eligible = summary_table.roi_efficiency_eval >= 0.75;
+if ismember('is_forced_rejected', summary_table.Properties.VariableNames) && any(~summary_table.is_forced_rejected)
+    eligible = eligible & ~summary_table.is_forced_rejected;
+end
 if any(eligible)
     candidate_table = summary_table(eligible, :);
 else
@@ -322,14 +400,18 @@ else
 end
 
 review_indices = [];
-[~, score_order] = sort(candidate_table.score, 'ascend');
-review_indices = [review_indices; candidate_table.case_index(score_order(1:min(3, height(candidate_table))))]; %#ok<AGROW>
+sort_scores = candidate_table.selection_score;
+if all(~isfinite(sort_scores))
+    sort_scores = candidate_table.raw_selection_score;
+end
+[~, score_order] = sort(sort_scores, 'ascend');
+review_indices = [review_indices; candidate_table.case_index(score_order(1:min(3, height(candidate_table))))];
 
 [~, rms_eval_order] = sort(candidate_table.rms_eval, 'ascend');
-review_indices = [review_indices; candidate_table.case_index(rms_eval_order(1:min(2, height(candidate_table))))]; %#ok<AGROW>
+review_indices = [review_indices; candidate_table.case_index(rms_eval_order(1:min(2, height(candidate_table))))];
 
 [~, rms_inner_order] = sort(candidate_table.rms_inner, 'ascend');
-review_indices = [review_indices; candidate_table.case_index(rms_inner_order(1:min(2, height(candidate_table))))]; %#ok<AGROW>
+review_indices = [review_indices; candidate_table.case_index(rms_inner_order(1:min(2, height(candidate_table))))];
 
 review_indices = unique(review_indices, 'stable');
 review_indices = review_indices(1:min(5, numel(review_indices)));
@@ -354,19 +436,27 @@ end
 
 function local_plot_comparison_table(summary_table, output_dir)
 eligible = summary_table.roi_efficiency_eval >= 0.75;
+if ismember('is_forced_rejected', summary_table.Properties.VariableNames) && any(~summary_table.is_forced_rejected)
+    eligible = eligible & ~summary_table.is_forced_rejected;
+end
 if any(eligible)
     plot_table = summary_table(eligible, :);
 else
     plot_table = summary_table;
 end
-[~, order] = sort(plot_table.score, 'ascend');
+sort_values = plot_table.selection_score;
+if all(~isfinite(sort_values))
+    sort_values = plot_table.raw_selection_score;
+end
+[~, order] = sort(sort_values, 'ascend');
 plot_table = plot_table(order(1:min(8, height(plot_table))), :);
 
 lines = strings(height(plot_table) + 1, 1);
-lines(1) = "case | stage | score | rms_eval | rms_inner | eff_eval | size50";
+lines(1) = "case | stage | score | raw | reject | rms_eval | rms_inner | eff_eval | size50";
 for idx = 1:height(plot_table)
-    lines(idx + 1) = sprintf('%s | %s | %.3g | %.2f | %.2f | %.2f%% | %.0f x %.0f', ...
+    lines(idx + 1) = sprintf('%s | %s | %.3g | %.3g | %d | %.2f | %.2f | %.2f%% | %.0f x %.0f', ...
         plot_table.name(idx), plot_table.stage(idx), plot_table.score(idx), ...
+        plot_table.raw_selection_score(idx), plot_table.is_forced_rejected(idx), ...
         plot_table.rms_eval(idx), plot_table.rms_inner(idx), ...
         plot_table.roi_efficiency_eval(idx) * 100, ...
         plot_table.size_50_x_um(idx), plot_table.size_50_y_um(idx));
@@ -378,4 +468,16 @@ text(0.02, 0.95, strjoin(lines, newline), 'FontName', 'Consolas', ...
     'Interpreter', 'none', 'VerticalAlignment', 'top');
 exportgraphics(gcf, fullfile(output_dir, 'comparison_table.png'));
 close(gcf);
+end
+
+function text = local_join_reasons(reasons)
+if isempty(reasons)
+    text = '';
+elseif iscell(reasons)
+    text = strjoin(reasons, ',');
+elseif isstring(reasons)
+    text = strjoin(cellstr(reasons), ',');
+else
+    text = char(string(reasons));
+end
 end

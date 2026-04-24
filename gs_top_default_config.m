@@ -78,6 +78,15 @@ cfg.solver.mraf.scale_mode = 'target_power';
 cfg.solver.mraf.target_efficiency = 0.95;
 cfg.solver.mraf.transition_width_px = 3;
 cfg.solver.mraf.guard_band_px = 4;
+cfg.solver.mraf.adaptive_signal_weight.enabled = false;
+cfg.solver.mraf.adaptive_signal_weight.gain = 0.25;
+cfg.solver.mraf.adaptive_signal_weight.blend = 0.35;
+cfg.solver.mraf.adaptive_signal_weight.min_weight = 0.85;
+cfg.solver.mraf.adaptive_signal_weight.max_weight = 1.15;
+cfg.solver.mraf.adaptive_signal_weight.smooth_sigma_px = 4;
+cfg.solver.mraf.adaptive_signal_weight.warmup_iterations = 10;
+cfg.solver.mraf.adaptive_signal_weight.update_interval = 1;
+cfg.solver.mraf.adaptive_signal_weight.region = 'eval';
 
 cfg.solver.initial_phase = 'spherical';
 cfg.solver.initial_phase_strength = 1.0;

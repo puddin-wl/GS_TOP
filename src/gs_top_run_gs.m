@@ -23,6 +23,12 @@ best_forward_field = [];
 best_metrics = struct();
 best_iter = NaN;
 best_restart_idx = NaN;
+fallback_score = inf;
+fallback_phase = [];
+fallback_forward_field = [];
+fallback_metrics = struct();
+fallback_iter = NaN;
+fallback_restart_idx = NaN;
 
 for restart_idx = 1:num_restarts
     rng(base_seed + restart_idx - 1);
@@ -39,21 +45,31 @@ for restart_idx = 1:num_restarts
         focal_field = gs_top_forward_system(doe_field, cfg, grids);
         focal_intensity = abs(focal_field) .^ 2;
 
-        metrics = gs_top_compute_metrics(cfg, focal_intensity, grids, target);
+        metrics = gs_top_compute_metrics(cfg, focal_intensity, grids, target, focal_field);
         metrics.best_iter = iter_idx;
         metrics.best_restart_idx = restart_idx;
         metrics.initial_phase = phase_type;
         metrics.initial_phase_strength = phase_strength;
         convergence = local_record_metrics(convergence, metrics, iter_idx, restart_idx);
 
-        if (keep_best && metrics.score < best_score) || ...
-                (~keep_best && iter_idx == iterations && metrics.score < best_score)
-            best_score = metrics.score;
-            best_phase = phase;
-            best_forward_field = focal_field;
-            best_metrics = metrics;
-            best_iter = iter_idx;
-            best_restart_idx = restart_idx;
+        should_consider = keep_best || iter_idx == iterations;
+        if should_consider
+            if ~metrics.is_forced_rejected && metrics.selection_score < best_score
+                best_score = metrics.selection_score;
+                best_phase = phase;
+                best_forward_field = focal_field;
+                best_metrics = metrics;
+                best_iter = iter_idx;
+                best_restart_idx = restart_idx;
+            end
+            if metrics.raw_selection_score < fallback_score
+                fallback_score = metrics.raw_selection_score;
+                fallback_phase = phase;
+                fallback_forward_field = focal_field;
+                fallback_metrics = metrics;
+                fallback_iter = iter_idx;
+                fallback_restart_idx = restart_idx;
+            end
         end
 
         state.current_metrics = metrics;
@@ -65,7 +81,15 @@ for restart_idx = 1:num_restarts
     end
 end
 
-if isempty(best_phase)
+used_forced_rejection_fallback = false;
+if isempty(best_phase) && ~isempty(fallback_phase)
+    best_phase = fallback_phase;
+    best_forward_field = fallback_forward_field;
+    best_metrics = fallback_metrics;
+    best_iter = fallback_iter;
+    best_restart_idx = fallback_restart_idx;
+    used_forced_rejection_fallback = true;
+elseif isempty(best_phase)
     best_phase = zeros(grids.N);
     best_forward_field = zeros(grids.N);
 end
@@ -75,6 +99,7 @@ design.best_forward_field = best_forward_field;
 design.best_metrics = best_metrics;
 design.best_iter = best_iter;
 design.best_restart_idx = best_restart_idx;
+design.used_forced_rejection_fallback = used_forced_rejection_fallback;
 design.method = method;
 design.initial_phase = phase_type;
 design.initial_phase_strength = phase_strength;
@@ -113,7 +138,9 @@ end
 function convergence = local_make_convergence(iterations, num_restarts)
 fields = {'rms_eval', 'rms_inner', 'roi_efficiency_eval', 'design_efficiency', ...
     'leakage_outside_eval_percent', 'leakage_outside_design_percent', ...
-    'size_50_x_um', 'size_50_y_um', 'size_13p5_x_um', 'size_13p5_y_um', 'score'};
+    'size_50_x_um', 'size_50_y_um', 'size_13p5_x_um', 'size_13p5_y_um', ...
+    'score', 'selection_score', 'raw_selection_score', 'has_dark_hole', ...
+    'is_forced_rejected'};
 for idx = 1:numel(fields)
     convergence.(fields{idx}) = nan(iterations, num_restarts);
 end
@@ -131,6 +158,10 @@ convergence.size_50_y_um(iter_idx, restart_idx) = metrics.size_50_y_um;
 convergence.size_13p5_x_um(iter_idx, restart_idx) = metrics.size_13p5_x_um;
 convergence.size_13p5_y_um(iter_idx, restart_idx) = metrics.size_13p5_y_um;
 convergence.score(iter_idx, restart_idx) = metrics.score;
+convergence.selection_score(iter_idx, restart_idx) = metrics.selection_score;
+convergence.raw_selection_score(iter_idx, restart_idx) = metrics.raw_selection_score;
+convergence.has_dark_hole(iter_idx, restart_idx) = double(metrics.has_dark_hole);
+convergence.is_forced_rejected(iter_idx, restart_idx) = double(metrics.is_forced_rejected);
 end
 
 function method = local_solver_method(cfg)

@@ -41,6 +41,7 @@ switch method
         if ~isequal(size(T), size(A))
             error('GS_TOP:TargetSizeMismatch', 'Target amplitude and focal field sizes do not match.');
         end
+        [T, state] = local_apply_adaptive_signal_weight(mraf_cfg, A, T, target, signal_mask, state, iter_idx);
 
         scale = local_mraf_scale(cfg, mraf_cfg, A, T, signal_mask, input_power);
 
@@ -83,6 +84,106 @@ if isfield(state, 'current_metrics') && isstruct(state.current_metrics)
     state.debug.roi_efficiency_eval(iter_idx, 1) = local_metric(state.current_metrics, 'roi_efficiency_eval');
     state.debug.score(iter_idx, 1) = local_metric(state.current_metrics, 'score');
 end
+end
+
+function [T, state] = local_apply_adaptive_signal_weight(mraf_cfg, A, T, target, signal_mask, state, iter_idx)
+adaptive_cfg = local_get_struct(mraf_cfg, 'adaptive_signal_weight');
+if ~local_get(adaptive_cfg, 'enabled', false)
+    return;
+end
+
+if ~isfield(state, 'adaptive_signal_weight') || isempty(state.adaptive_signal_weight)
+    state.adaptive_signal_weight = ones(size(A));
+end
+
+adapt_mask = local_adaptive_signal_mask(adaptive_cfg, target, signal_mask, size(A));
+if any(adapt_mask(:))
+    warmup = max(1, round(local_get(adaptive_cfg, 'warmup_iterations', 10)));
+    interval = max(1, round(local_get(adaptive_cfg, 'update_interval', 1)));
+    should_update = iter_idx >= warmup && mod(iter_idx - warmup, interval) == 0;
+    if should_update
+        state.adaptive_signal_weight = local_update_signal_weight(adaptive_cfg, ...
+            state.adaptive_signal_weight, A, adapt_mask);
+    end
+end
+
+T(signal_mask) = T(signal_mask) .* state.adaptive_signal_weight(signal_mask);
+end
+
+function mask = local_adaptive_signal_mask(adaptive_cfg, target, signal_mask, array_size)
+region = lower(char(local_get(adaptive_cfg, 'region', 'eval')));
+switch region
+    case {'eval', 'signal'}
+        mask = signal_mask;
+    case 'inner'
+        mask = local_mask(target, 'inner_roi_mask', signal_mask);
+    otherwise
+        error('GS_TOP:UnknownAdaptiveWeightRegion', 'Unknown adaptive signal weight region: %s', region);
+end
+
+if isscalar(mask)
+    mask = repmat(logical(mask), array_size);
+else
+    mask = logical(mask);
+end
+mask = mask & signal_mask;
+end
+
+function weight = local_update_signal_weight(adaptive_cfg, old_weight, A, adapt_mask)
+amp_values = A(adapt_mask);
+mean_amp = mean(amp_values(:));
+if mean_amp <= 0 || ~isfinite(mean_amp)
+    weight = old_weight;
+    return;
+end
+
+gain = local_get(adaptive_cfg, 'gain', 0.25);
+gain = max(gain, 0);
+min_weight = local_get(adaptive_cfg, 'min_weight', 0.85);
+max_weight = local_get(adaptive_cfg, 'max_weight', 1.15);
+blend = local_get(adaptive_cfg, 'blend', 0.35);
+blend = min(max(blend, 0), 1);
+
+norm_amp = A / max(mean_amp, eps);
+amp_floor = sqrt(max(local_get(adaptive_cfg, 'intensity_floor', 0.10), eps));
+correction = max(norm_amp, amp_floor) .^ (-gain);
+correction = min(max(correction, min_weight), max_weight);
+
+correction(~adapt_mask) = 1;
+smooth_sigma_px = local_get(adaptive_cfg, 'smooth_sigma_px', 0);
+if smooth_sigma_px > 0
+    correction = local_masked_smooth(correction, adapt_mask, smooth_sigma_px);
+end
+correction = local_normalize_weight(correction, adapt_mask);
+
+weight = old_weight;
+weight(adapt_mask) = (1 - blend) * old_weight(adapt_mask) + blend * correction(adapt_mask);
+weight = local_normalize_weight(weight, adapt_mask);
+weight(~isfinite(weight)) = 1;
+weight = min(max(weight, min_weight), max_weight);
+end
+
+function weight = local_normalize_weight(weight, mask)
+power_mean = mean(weight(mask) .^ 2);
+if power_mean > 0 && isfinite(power_mean)
+    weight(mask) = weight(mask) / sqrt(power_mean);
+end
+end
+
+function smoothed = local_masked_smooth(values, mask, sigma_px)
+radius = max(1, ceil(3 * sigma_px));
+x = -radius:radius;
+kernel_1d = exp(-(x .^ 2) / (2 * sigma_px ^ 2));
+kernel_1d = kernel_1d / sum(kernel_1d);
+kernel = kernel_1d' * kernel_1d;
+
+mask_double = double(mask);
+numerator = conv2(values .* mask_double, kernel, 'same');
+denominator = conv2(mask_double, kernel, 'same');
+smoothed = values;
+valid = denominator > eps;
+smoothed(valid) = numerator(valid) ./ denominator(valid);
+smoothed(~mask) = 1;
 end
 
 function scale = local_mraf_scale(cfg, mraf_cfg, A, T, signal_mask, input_power)
