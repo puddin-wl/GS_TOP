@@ -25,6 +25,8 @@ GS_TOP 是一个 MATLAB DOE/GS 仿真项目，用于 `532 nm` 中心场、正入
 
 - `gs_top_default_config.m`
   生成默认配置 `cfg`
+- `gs_top_add_paths.m`
+  将项目根目录和 `src/` 加入 MATLAB 路径
 - `gs_top_load_bgdata.m`
   读取 Spiricon `.bgData` 实测光斑文件，并提取像素标定、D4Sigma 束宽和图像矩阵
 - `gs_top_run.m`
@@ -77,6 +79,19 @@ results = run_tests();
 - 总输出效率
 - 功率、单脉冲能量、峰值辐照度、fluence 报表
 
+## Repository Layout
+
+- `src/`
+  内部仿真函数、传播模型、指标计算、绘图函数
+- `tests/`
+  MATLAB 单元测试
+- `docs/`
+  计划与外部输入资料说明
+- `inputs/`
+  外部 PDF、测量文件、光路图的建议存放位置
+- `artifacts/`
+  仿真输出图片、MAT 文件和报表
+
 ## External Inputs
 
 当前项目已经对接以下外部资料口径：
@@ -97,6 +112,11 @@ results = run_tests();
   像素标定 `3.69 um/pixel`，
   束宽基准 `D4Sigma`，
   近似 D4Sigma 束宽约 `2.008 mm × 1.930 mm`
+
+更多来源说明见：
+
+- [PLAN.md](/E:/program/GS_TOP/docs/PLAN.md)
+- [INPUT_SOURCES.md](/E:/program/GS_TOP/docs/INPUT_SOURCES.md)
 
 ## Default Acceptance Targets
 

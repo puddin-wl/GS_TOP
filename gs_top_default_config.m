@@ -1,9 +1,11 @@
 function cfg = gs_top_default_config()
 %GS_TOP_DEFAULT_CONFIG Build the default configuration for GS_TOP.
 
+project_root = fileparts(mfilename('fullpath'));
+
 cfg.project.name = 'GS_TOP';
 cfg.project.repo_name = 'GS_TOP';
-cfg.project.output_root = fullfile(pwd, 'artifacts');
+cfg.project.output_root = fullfile(project_root, 'artifacts');
 
 cfg.source.lambda_nm = 532;
 cfg.source.pulse_width_ps = 10;

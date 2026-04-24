@@ -1,6 +1,8 @@
 function result = gs_top_run(cfg)
 %GS_TOP_RUN Execute one GS_TOP simulation run and save artifacts.
 
+gs_top_add_paths();
+
 if nargin < 1 || isempty(cfg)
     cfg = gs_top_default_config();
 end

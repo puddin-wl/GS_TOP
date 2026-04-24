@@ -1,6 +1,8 @@
 function sweep = gs_top_sweep(cfg)
 %GS_TOP_SWEEP Sweep R_in and L1 and save summary plots.
 
+gs_top_add_paths();
+
 if nargin < 1 || isempty(cfg)
     cfg = gs_top_default_config();
 end
