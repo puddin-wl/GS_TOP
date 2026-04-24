@@ -80,6 +80,8 @@ Each saved run should include:
 - `center_profiles.png`
 - `gs_convergence.png`
 
+`center_profiles.png` is cropped around the rectangular evaluation region. The horizontal profile uses the wider `330 um` scale, and the vertical profile uses the narrower `120 um` scale.
+
 ## Current Interpretation
 
 The code is ready for parameter studies and result saving.

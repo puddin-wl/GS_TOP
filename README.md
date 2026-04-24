@@ -29,7 +29,7 @@ The current codebase already saves:
 - DOE phase maps
 - focal-plane intensity maps
 - target vs output comparisons
-- center-line profiles
+- cropped horizontal and vertical center-line profiles
 - convergence plots
 - text and image metric summaries
 - MAT result files

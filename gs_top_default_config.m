@@ -51,6 +51,8 @@ cfg.grid.focus_sampling_um = 5.0;
 cfg.grid.computation_window_mm = [];
 cfg.grid.plot_half_width_um = 800;
 cfg.grid.plot_half_height_um = 400;
+cfg.grid.profile_half_width_um = 600;
+cfg.grid.profile_half_height_um = 250;
 
 cfg.target.shape = 'rectangle';
 cfg.target.width_um = 330;

@@ -61,17 +61,33 @@ profile_x = result.evaluation.intensity(center_idx, :);
 profile_y = result.evaluation.intensity(:, center_idx);
 
 figure('Color', 'w', 'Visible', 'off');
+tiledlayout(2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+nexttile;
 plot(grids.x_focus_um, profile_x / max(profile_x), 'LineWidth', 1.2);
-hold on;
+yline(cfg.metrics.main_size_threshold, '--');
+yline(cfg.metrics.secondary_size_threshold, '--');
+yline(cfg.metrics.edge_high_threshold, ':');
+grid on;
+xlabel('x (\mum)');
+ylabel('Norm. I');
+title('Horizontal Center Profile');
+if isfield(cfg.grid, 'profile_half_width_um')
+    xlim([-cfg.grid.profile_half_width_um, cfg.grid.profile_half_width_um]);
+end
+
+nexttile;
 plot(grids.y_focus_um, profile_y / max(profile_y), 'LineWidth', 1.2);
 yline(cfg.metrics.main_size_threshold, '--');
 yline(cfg.metrics.secondary_size_threshold, '--');
 yline(cfg.metrics.edge_high_threshold, ':');
 grid on;
-xlabel('Axis (\mum)');
-ylabel('Normalized intensity');
-legend('Horizontal', 'Vertical', '50%', '13.5%', '90%', 'Location', 'best');
-title('Center Line Profiles');
+xlabel('y (\mum)');
+ylabel('Norm. I');
+title('Vertical Center Profile');
+if isfield(cfg.grid, 'profile_half_height_um')
+    xlim([-cfg.grid.profile_half_height_um, cfg.grid.profile_half_height_um]);
+end
 exportgraphics(gcf, fullfile(output_dir, 'center_profiles.png'));
 close(gcf);
 

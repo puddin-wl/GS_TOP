@@ -36,6 +36,7 @@ Out of scope for the current version:
 - wavefront curvature: parameterized through `R_in`
 - system distance: parameterized through `L1`
 - lens reference: `429 mm` F-theta lens
+- focal-plane physics: Fourier transform of the DOE-modulated complex field, including input amplitude and aperture
 - target metric basis:
   - main size at `50%`
   - secondary size at `13.5%`

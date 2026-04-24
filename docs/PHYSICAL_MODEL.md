@@ -40,6 +40,37 @@ L1 = 200 mm
 
 This is treated as an effective center-field DOE-to-lens/scanner distance. It can be changed in `cfg.system.L1_mm` when the exact mechanical reference is finalized.
 
+## DOE Phase And Focal-Plane Fourier Transform
+
+The short engineering statement is:
+
+```text
+the DOE-modulated complex field is Fourier transformed to the focal plane
+```
+
+That is the right physical picture for this project.
+
+The one important precision is that the Fourier transform is not applied to the phase array alone. It is applied to the full complex field after DOE modulation:
+
+```text
+U_DOE(x, y) = A_in(x, y) * aperture(x, y) * exp(i * phi_DOE(x, y))
+```
+
+If the DOE is effectively located at the Fourier lens pupil plane, or is optically relayed to that pupil, then:
+
+```text
+U_focus proportional to FT{ U_DOE }
+```
+
+The current code keeps the fixed-position DOE-to-lens distance `L1`, so the implemented model is:
+
+```text
+U_lens = AS(U_DOE, L1)
+U_focus proportional to FT{ U_lens * pupil }
+```
+
+If `L1` is set to zero or treated as optically relayed, this reduces to the direct DOE-field Fourier transform picture.
+
 ## Lens To Focal Plane Fourier Scaling
 
 For a thin lens observed at its back focal plane, the quadratic lens phase cancels the Fresnel propagation quadratic phase. Therefore the focal-plane field intensity is proportional to the Fourier transform of the field incident on the lens pupil:
@@ -77,7 +108,7 @@ Default baseline:
 - target samples: about `66 px x 24 px`
 - focal-plane full canvas: `5120 um x 5120 um`
 
-The saved plots crop around the useful central field so the large mathematical canvas does not distract from the target region.
+The saved 2D plots crop around the useful central field so the large mathematical canvas does not distract from the target region. The center-profile plot is split into horizontal and vertical profiles with separate axis ranges because the target rectangle is much wider than it is tall.
 
 ## Current Fixed Baseline Result
 
