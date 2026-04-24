@@ -57,10 +57,36 @@ cfg.grid.profile_half_height_um = 250;
 cfg.target.shape = 'rectangle';
 cfg.target.width_um = 330;
 cfg.target.height_um = 120;
+cfg.target.design_mode = 'soft_edge';
+cfg.target.edge_softening_px = 3;
+cfg.target.design_margin_x_um = 10;
+cfg.target.design_margin_y_um = 5;
+cfg.target.inner_margin_px = 2;
+cfg.target.super_gaussian_order = 12;
 
-cfg.solver.iterations = 250;
+cfg.solver.method = 'mraf';
+cfg.solver.iterations = 500;
 cfg.solver.random_seed = 42;
 cfg.solver.keep_best = true;
+cfg.solver.num_restarts = 8;
+
+cfg.solver.mraf.enabled = true;
+cfg.solver.mraf.mix = 0.6;
+cfg.solver.mraf.noise_region_mode = 'free';
+cfg.solver.mraf.transition_width_px = 3;
+cfg.solver.mraf.guard_band_px = 4;
+
+cfg.solver.initial_phase = 'spherical';
+cfg.solver.initial_phase_strength = 1.0;
+cfg.solver.initial_phase_strength_list = [0.25, 0.5, 1, 2, 4];
+cfg.solver.initial_phase_dither_enabled = true;
+cfg.solver.initial_phase_dither_strength_rad = 0.1;
+
+cfg.solver.score.rms_weight = 1.0;
+cfg.solver.score.efficiency_weight = 100.0;
+cfg.solver.score.size_weight = 0.1;
+cfg.solver.score.edge_weight = 0.0;
+cfg.solver.allow_high_res_test = true;
 
 cfg.metrics.rms_limit = 5.0;
 cfg.metrics.efficiency_limit = 0.95;

@@ -1,120 +1,59 @@
 # GS_TOP
 
-`GS_TOP` is a MATLAB simulation project for rectangular flat-top beam shaping with a continuous-phase DOE at `532 nm`.
+`GS_TOP` is a MATLAB simulation project for continuous-phase DOE design at `532 nm`.
+The current objective is to generate a rectangular flat-top beam in an F-theta focal
+plane.
 
-The project currently focuses on:
+Target:
 
-- standard `GS` phase retrieval and DOE phase design
-- physical propagation from `DOE -> F-theta lens -> focal plane`
-- initial tolerance studies on `R_in` and `L1`
-- saved artifacts for later comparison and iteration
+- spot size: `330 um x 120 um`
+- acceptance RMS nonuniformity: `<= 5%`
+- acceptance ROI diffraction efficiency: `>= 95%`
+- scope: pure simulation, continuous phase DOE, center field, normal incidence
 
-## What This Repo Is For
+Out of scope for this stage:
 
-Target requirement:
+- camera-feedback or closed-loop experimental correction
+- pointwise measured-error target rewriting
+- DOE fabrication quantization, etch depth, or process tolerance modeling
 
-- rectangular hard-edge spot
-- target size: `330 um x 120 um`
-- wavelength: `532 nm`
-- center field only
-- normal incidence only
+## Current Optimization Path
 
-Primary acceptance metrics:
+The repository keeps the original standard GS solver as a baseline and adds:
 
-- RMS nonuniformity `<= 5%`
-- ROI diffraction efficiency `>= 95%`
+- MRAF mixed-region amplitude freedom constraints
+- soft-edge and super-Gaussian target generation
+- eval, inner, signal, design, transition, and noise ROI masks
+- quadratic, spherical, and astigmatic quadratic initial phase options
+- multi-start solver support
+- budgeted MRAF parameter batch screening
+- expanded metrics, convergence plots, and ROI diagnostics
 
-The current codebase already saves:
+The default config now uses:
 
-- DOE phase maps
-- focal-plane intensity maps
-- target vs output comparisons
-- cropped horizontal and vertical center-line profiles
-- convergence plots
-- text and image metric summaries
-- MAT result files
+```matlab
+cfg.solver.method = 'mraf';
+cfg.target.design_mode = 'soft_edge';
+```
+
+Use `method='gs'` explicitly when reproducing the old baseline.
 
 ## Repo Layout
 
-- `gs_top_default_config.m`
-  default project configuration
-- `gs_top_run.m`
-  run one full simulation and save outputs
-- `gs_top_sweep.m`
-  run `R_in` / `L1` sweeps and save outputs
-- `gs_top_load_bgdata.m`
-  load a Spiricon `.bgData` beam measurement file
-- `gs_top_add_paths.m`
-  add the repo root and `src/` to the MATLAB path
-- `run_initial_simulations.m`
-  run the initial simulation batch and save a suite summary
-- `run_tests.m`
-  run MATLAB unit tests
-- `src/`
-  internal functions
-- `docs/`
-  planning notes and external input references
-- `inputs/`
-  suggested location for copied external inputs
-- `artifacts/`
-  saved simulation outputs
+- `gs_top_default_config.m` - default optical, target, solver, and scoring config
+- `gs_top_run.m` - run one saved simulation
+- `run_fixed_physical_baseline.m` - run the locked standard-GS physical baseline
+- `run_mraf_optimization_batch.m` - run budgeted MRAF screening and optional high-res review
+- `run_tests.m` - run MATLAB unit tests
+- `src/` - propagation, target, solver, metrics, and plotting functions
+- `tests/` - MATLAB function tests
+- `docs/` - project notes, runbook, physical model, structure, changelog
+- `inputs/` - local external input staging area
+- `artifacts/` - generated outputs, ignored by Git
 
-## External Inputs Already Reflected
-
-Optical path layout currently referenced:
-
-- output to mirror 1: `150 mm`
-- mirror 1 to mirror 2: `380 mm`
-- mirror 2 to expander: `140 mm`
-- expander to DOE: `70 mm`
-- DOE to scanner: `150 mm`
-
-Current F-theta lens reference:
-
-- model: `JENar APTAline 429-532-339 AL`
-- focal length: `429 mm`
-- wavelength: `532 nm`
-- input beam: `16 mm @ 1/e^2`
-- focus size: `26.9 um @ 1/e^2`
-
-Current Spiricon beam reference:
-
-- file type: `.bgData`
-- image size: `1928 x 1448`
-- pixel pitch: `3.69 um`
-- beam width basis: `D4Sigma`
-- extracted D4Sigma width: about `2.008 mm x 1.930 mm`
-
-See also:
-
-- [Project Plan](/E:/program/GS_TOP/docs/PLAN.md)
-- [Input Sources](/E:/program/GS_TOP/docs/INPUT_SOURCES.md)
-- [Physical Model](/E:/program/GS_TOP/docs/PHYSICAL_MODEL.md)
-- [Runbook](/E:/program/GS_TOP/docs/RUNBOOK.md)
+See [Project Structure](/E:/program/GS_TOP/docs/PROJECT_STRUCTURE.md) for more detail.
 
 ## Quick Start
-
-Run one simulation:
-
-```matlab
-cfg = gs_top_default_config();
-result = gs_top_run(cfg);
-```
-
-Run with measured beam input:
-
-```matlab
-cfg = gs_top_default_config();
-cfg.source.beam_measurement_path = 'D:/qq_shuju/xwechat_files/wxid_zvpqcwmfi4vf22_ec28/msg/file/2026-04/3037.bgData';
-cfg.beam.use_measured_profile = true;
-result = gs_top_run(cfg);
-```
-
-Run the initial batch:
-
-```matlab
-suite = run_initial_simulations();
-```
 
 Run tests:
 
@@ -122,14 +61,77 @@ Run tests:
 results = run_tests();
 ```
 
-## Current Status
+Run the standard GS physical baseline:
 
-The framework is stable and saves results correctly, but the default configuration does **not** yet meet the final acceptance targets.
-
-The current physical baseline uses the corrected back-focal-plane Fourier operator. The latest fixed-position baseline is saved in:
-
-```text
-artifacts/run_20260424_151447/
+```matlab
+result = run_fixed_physical_baseline();
 ```
 
-That run reports about `90.918%` ROI efficiency and `315 um x 95 um` at the `50%` threshold. The next engineering step is now DOE phase optimization and target constraint refinement, not another sweep over mechanical tolerances.
+Run one default MRAF simulation:
+
+```matlab
+cfg = gs_top_default_config();
+result = gs_top_run(cfg);
+```
+
+Run one explicit GS baseline:
+
+```matlab
+cfg = gs_top_default_config();
+cfg.solver.method = 'gs';
+cfg.solver.num_restarts = 1;
+cfg.solver.initial_phase = 'random';
+cfg.solver.initial_phase_dither_enabled = false;
+cfg.target.design_mode = 'hard';
+result = gs_top_run(cfg);
+```
+
+Run a fast batch smoke check:
+
+```matlab
+batch = run_mraf_optimization_batch('smoke');
+```
+
+Run the budgeted MRAF optimization batch:
+
+```matlab
+batch = run_mraf_optimization_batch();
+```
+
+## Batch Outputs
+
+Batch results are saved under:
+
+```text
+artifacts/mraf_optimization_YYYYMMDD_HHMMSS/
+```
+
+Expected files include:
+
+- `summary.csv`
+- `best_result.mat`
+- `best_metrics_summary.txt`
+- `comparison_table.png`
+- `best_phase.png`
+- `best_focal_intensity.png`
+- `best_roi_normalized_intensity.png`
+- `best_center_profiles.png`
+- `best_masks.png`
+- `convergence_rms_efficiency_score.png`
+
+Generated artifacts and `.mat` files stay out of Git through `.gitignore`.
+
+## Current Baseline
+
+The fixed physical baseline remains:
+
+- standard GS
+- hard rectangular target
+- random initial phase
+- `N = 1024`
+- `focus_sampling_um = 5`
+- `L1 = 200 mm`
+
+The previously saved baseline in `artifacts/run_20260424_151447/` reported about
+`38.083%` RMS nonuniformity and `90.918%` ROI efficiency. MRAF/soft target work
+uses that result as the comparison point.

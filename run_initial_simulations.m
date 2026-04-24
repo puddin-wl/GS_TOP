@@ -17,7 +17,12 @@ cases = {};
 
 cfg = gs_top_default_config();
 cfg.project.output_root = fullfile(project_root, 'artifacts');
+cfg.solver.method = 'gs';
 cfg.solver.iterations = 120;
+cfg.solver.num_restarts = 1;
+cfg.solver.initial_phase = 'random';
+cfg.solver.initial_phase_dither_enabled = false;
+cfg.target.design_mode = 'hard';
 baseline_result = gs_top_run(cfg);
 cases{end + 1} = local_case_struct('baseline_gaussian', baseline_result); %#ok<AGROW>
 
@@ -25,7 +30,12 @@ measured_path = 'D:/qq_shuju/xwechat_files/wxid_zvpqcwmfi4vf22_ec28/msg/file/202
 if isfile(measured_path)
     cfg_measured = gs_top_default_config();
     cfg_measured.project.output_root = fullfile(project_root, 'artifacts');
+    cfg_measured.solver.method = 'gs';
     cfg_measured.solver.iterations = 120;
+    cfg_measured.solver.num_restarts = 1;
+    cfg_measured.solver.initial_phase = 'random';
+    cfg_measured.solver.initial_phase_dither_enabled = false;
+    cfg_measured.target.design_mode = 'hard';
     cfg_measured.source.beam_measurement_path = measured_path;
     cfg_measured.beam.use_measured_profile = true;
     measured_result = gs_top_run(cfg_measured);
@@ -34,7 +44,12 @@ end
 
 cfg_sweep = gs_top_default_config();
 cfg_sweep.project.output_root = fullfile(project_root, 'artifacts');
+cfg_sweep.solver.method = 'gs';
 cfg_sweep.solver.iterations = 40;
+cfg_sweep.solver.num_restarts = 1;
+cfg_sweep.solver.initial_phase = 'random';
+cfg_sweep.solver.initial_phase_dither_enabled = false;
+cfg_sweep.target.design_mode = 'hard';
 cfg_sweep.sweep.R_in_mm_list = [Inf, 2000, -2000];
 cfg_sweep.sweep.L1_mm_list = [190, 200, 210];
 sweep = gs_top_sweep(cfg_sweep);

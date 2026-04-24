@@ -1,98 +1,121 @@
 # GS_TOP Runbook
 
-This file is meant to be the short operational reference for future work.
+## Standard Checks
 
-## Standard Workflow
-
-1. run tests
-2. run one baseline simulation
-3. run one measured-beam simulation if a `.bgData` file is available
-4. run a small sweep on `R_in` and `L1`
-5. compare saved outputs inside `artifacts/`
-
-## Recommended Commands
-
-### 1. Run tests
+Run all tests:
 
 ```matlab
 results = run_tests();
 ```
 
-### 2. Run one default simulation
+Run a fast MRAF batch smoke check:
 
 ```matlab
-cfg = gs_top_default_config();
-result = gs_top_run(cfg);
+batch = run_mraf_optimization_batch('smoke');
 ```
 
-### 2a. Run the fixed physical baseline
+The smoke mode uses a small grid and a few iterations. It validates the MATLAB
+execution path, batch table writing, best-result selection, and plot generation.
+
+## Baseline
+
+Run the fixed standard-GS physical baseline:
 
 ```matlab
 result = run_fixed_physical_baseline();
 ```
 
-This also saves `physical_model_summary.txt` in the result folder.
+This script explicitly uses:
 
-### 3. Run with measured input beam
+- `cfg.solver.method = 'gs'`
+- `cfg.target.design_mode = 'hard'`
+- random initial phase
+- one restart
+- `N = 1024`
+- `focus_sampling_um = 5`
+- `L1 = 200 mm`
+
+## One MRAF Run
 
 ```matlab
 cfg = gs_top_default_config();
-cfg.source.beam_measurement_path = 'D:/qq_shuju/xwechat_files/wxid_zvpqcwmfi4vf22_ec28/msg/file/2026-04/3037.bgData';
-cfg.beam.use_measured_profile = true;
 result = gs_top_run(cfg);
 ```
 
-### 4. Run the initial batch
+Useful quick variations:
 
 ```matlab
-suite = run_initial_simulations();
+cfg.solver.mraf.mix = 0.5;
+cfg.target.edge_softening_px = 4;
+cfg.target.design_margin_x_um = 10;
+cfg.target.design_margin_y_um = 5;
+cfg.solver.initial_phase = 'astigmatic_quadratic';
+cfg.solver.initial_phase_strength = 1;
 ```
 
-## Where Results Are Saved
+## Budgeted MRAF Optimization Batch
 
-Single runs:
+```matlab
+batch = run_mraf_optimization_batch();
+```
 
-- `artifacts/run_YYYYMMDD_HHMMSS/`
+Stage 1 defaults:
 
-Sweeps:
+- `N = 1024`
+- `focus_sampling_um = 5`
+- `iterations = 300`
+- standard GS baseline
+- MRAF hard target mix checks
+- MRAF soft-edge mix, edge width, and margin checks
+- MRAF super-Gaussian order/mix checks
+- initial phase and strength checks
 
-- `artifacts/sweep_YYYYMMDD_HHMMSS/`
+Stage 2 defaults:
 
-Batch summaries:
+- top 3-5 candidates from Stage 1
+- `N = 2048`
+- `focus_sampling_um = 2.5`
+- `iterations = 500`
 
-- `artifacts/suite_YYYYMMDD_HHMMSS/`
+## Output Files
 
-Each saved run should include:
+Single runs save to:
 
-- `doe_phase.png`
-- `focal_intensity.png`
-- `target_vs_output.png`
-- `center_profiles.png`
-- `gs_convergence.png`
+```text
+artifacts/run_YYYYMMDD_HHMMSS/
+```
+
+Batch runs save to:
+
+```text
+artifacts/mraf_optimization_YYYYMMDD_HHMMSS/
+```
+
+Key files:
+
 - `metrics_summary.txt`
-- `metrics_summary.png`
-- `result.mat`
+- `summary.csv`
+- `best_metrics_summary.txt`
+- `comparison_table.png`
+- `best_phase.png`
+- `best_focal_intensity.png`
+- `best_roi_normalized_intensity.png`
+- `best_center_profiles.png`
+- `best_masks.png`
+- `convergence_rms_efficiency_score.png`
 
-## Files To Check First After A Run
+## Git Workflow
 
-- `metrics_summary.txt`
-- `target_vs_output.png`
-- `center_profiles.png`
-- `gs_convergence.png`
+After a working code batch:
 
-`center_profiles.png` is cropped around the rectangular evaluation region. The horizontal profile uses the wider `330 um` scale, and the vertical profile uses the narrower `120 um` scale.
+```powershell
+git status --short
+```
 
-## Current Interpretation
+Then update `docs/CHANGELOG.md`, run tests, commit the exact changed files, and:
 
-The code is ready for parameter studies and result saving.
+```powershell
+git push origin main
+```
 
-The corrected physical baseline is internally consistent enough to use as the starting point for DOE phase optimization.
-
-The code is not yet at the final optical performance target.
-
-So for now, the correct workflow is:
-
-- save every run
-- compare metrics between runs
-- adjust model assumptions carefully
-- use the saved folders as checkpoints
+Do not commit `artifacts/`, `.mat`, autosave files, or temporary caches.

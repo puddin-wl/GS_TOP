@@ -4,8 +4,13 @@ function result = run_fixed_physical_baseline()
 project_root = gs_top_add_paths();
 cfg = gs_top_default_config();
 cfg.project.output_root = fullfile(project_root, 'artifacts');
+cfg.solver.method = 'gs';
 cfg.solver.iterations = 250;
 cfg.solver.random_seed = 42;
+cfg.solver.num_restarts = 1;
+cfg.solver.initial_phase = 'random';
+cfg.solver.initial_phase_dither_enabled = false;
+cfg.target.design_mode = 'hard';
 
 summary_text = gs_top_physical_summary(cfg);
 result = gs_top_run(cfg);
