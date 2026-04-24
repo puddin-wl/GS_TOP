@@ -26,6 +26,10 @@ colorbar;
 xlabel('x (\mum)');
 ylabel('y (\mum)');
 title('Focal Plane Intensity');
+if isfield(cfg.grid, 'plot_half_width_um') && isfield(cfg.grid, 'plot_half_height_um')
+    xlim([-cfg.grid.plot_half_width_um, cfg.grid.plot_half_width_um]);
+    ylim([-cfg.grid.plot_half_height_um, cfg.grid.plot_half_height_um]);
+end
 exportgraphics(gcf, fullfile(output_dir, 'focal_intensity.png'));
 close(gcf);
 
@@ -44,6 +48,10 @@ colorbar;
 title('Output');
 xlabel('x (\mum)');
 ylabel('y (\mum)');
+if isfield(cfg.grid, 'plot_half_width_um') && isfield(cfg.grid, 'plot_half_height_um')
+    xlim([-cfg.grid.plot_half_width_um, cfg.grid.plot_half_width_um]);
+    ylim([-cfg.grid.plot_half_height_um, cfg.grid.plot_half_height_um]);
+end
 sgtitle('Target vs Output');
 exportgraphics(gcf, fullfile(output_dir, 'target_vs_output.png'));
 close(gcf);

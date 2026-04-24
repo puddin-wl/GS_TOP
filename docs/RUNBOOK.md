@@ -25,6 +25,14 @@ cfg = gs_top_default_config();
 result = gs_top_run(cfg);
 ```
 
+### 2a. Run the fixed physical baseline
+
+```matlab
+result = run_fixed_physical_baseline();
+```
+
+This also saves `physical_model_summary.txt` in the result folder.
+
 ### 3. Run with measured input beam
 
 ```matlab
@@ -75,6 +83,8 @@ Each saved run should include:
 ## Current Interpretation
 
 The code is ready for parameter studies and result saving.
+
+The corrected physical baseline is internally consistent enough to use as the starting point for DOE phase optimization.
 
 The code is not yet at the final optical performance target.
 

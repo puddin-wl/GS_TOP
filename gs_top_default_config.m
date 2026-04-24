@@ -48,6 +48,9 @@ cfg.lens.scan_field_diagonal_mm = 339;
 
 cfg.grid.N = 1024;
 cfg.grid.focus_sampling_um = 5.0;
+cfg.grid.computation_window_mm = [];
+cfg.grid.plot_half_width_um = 800;
+cfg.grid.plot_half_height_um = 400;
 
 cfg.target.shape = 'rectangle';
 cfg.target.width_um = 330;

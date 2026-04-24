@@ -74,8 +74,8 @@ If a run does not meet the targets, the code must still:
 
 The current implementation is ready for iterative engineering work. The most likely next improvements are:
 
-- refine target-plane scaling in the GS loop
 - improve amplitude constraints and normalization
 - add better aperture and lens pupil handling
 - compare ideal Gaussian input vs measured beam input
-- use sweep results to identify better `R_in` and `L1` starting points
+- improve the GS/MRAF target constraint so efficiency can stay high while RMS nonuniformity drops
+- keep the current fixed-position physical baseline as the reference before returning to tolerance studies

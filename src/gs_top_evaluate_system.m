@@ -13,12 +13,14 @@ switch lower(cfg.lens.aperture_shape)
         lens_mask = abs(grids.X_mm) <= half_aperture & abs(grids.Y_mm) <= half_aperture;
 end
 
-field_after_lens = field_lens .* lens_phase .* lens_mask;
+lens_input = field_lens .* lens_mask;
+field_after_lens = lens_input .* lens_phase;
 focus_field = gs_top_forward_system(field_doe, cfg, grids);
 intensity = abs(focus_field) .^ 2;
 
 evaluation.field_doe = field_doe;
 evaluation.field_lens = field_lens;
+evaluation.lens_input = lens_input;
 evaluation.field_after_lens = field_after_lens;
 evaluation.focus_field = focus_field;
 evaluation.intensity = intensity;

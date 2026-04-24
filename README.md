@@ -89,6 +89,7 @@ See also:
 
 - [Project Plan](/E:/program/GS_TOP/docs/PLAN.md)
 - [Input Sources](/E:/program/GS_TOP/docs/INPUT_SOURCES.md)
+- [Physical Model](/E:/program/GS_TOP/docs/PHYSICAL_MODEL.md)
 - [Runbook](/E:/program/GS_TOP/docs/RUNBOOK.md)
 
 ## Quick Start
@@ -125,4 +126,10 @@ results = run_tests();
 
 The framework is stable and saves results correctly, but the default configuration does **not** yet meet the final acceptance targets.
 
-That is expected at this stage: the next engineering step is to improve the design loop, constraints, and physical scaling so the output converges toward the required `330 um x 120 um` flat-top specification.
+The current physical baseline uses the corrected back-focal-plane Fourier operator. The latest fixed-position baseline is saved in:
+
+```text
+artifacts/run_20260424_151447/
+```
+
+That run reports about `90.918%` ROI efficiency and `315 um x 95 um` at the `50%` threshold. The next engineering step is now DOE phase optimization and target constraint refinement, not another sweep over mechanical tolerances.
