@@ -11,12 +11,15 @@ cfg.source.rep_rate_hz = 1e6;
 cfg.source.power_w = 120;
 cfg.source.M2 = 1.1;
 cfg.source.polarization = 'linear-x';
+cfg.source.beam_measurement_path = '';
 
 cfg.beam.profile = 'gaussian';
 cfg.beam.diameter_1e2_mm = 5;
 cfg.beam.source_diameter_mm = 6;
 cfg.beam.R_in_mm = Inf;
 cfg.beam.amplitude_truncation = 'none';
+cfg.beam.use_measured_profile = false;
+cfg.beam.measured_profile_rescale_to_doe_diameter = true;
 
 cfg.doe.phase_type = 'continuous';
 cfg.doe.aperture_shape = 'square';
@@ -28,11 +31,18 @@ cfg.system.center_field_only = true;
 cfg.system.ignore_scanner = true;
 cfg.system.target_plane = 'focal';
 cfg.system.target_plane_offset_mm = 0;
+cfg.system.notes = 'Output->M1 150 mm, M1->M2 380 mm, M2->expander 140 mm, expander->DOE 70 mm, DOE->scanner 150 mm.';
 
-cfg.lens.model = 'HPFT-532-14-420-396';
-cfg.lens.f_mm = 420;
+cfg.lens.model = 'JENar_APTAline_429-532-339_AL';
+cfg.lens.f_mm = 429;
 cfg.lens.aperture_shape = 'circular';
 cfg.lens.aperture_mm = 25.4;
+cfg.lens.input_beam_1e2_mm = 16.0;
+cfg.lens.focus_size_1e2_um = 26.9;
+cfg.lens.back_working_distance_mm = 547.7;
+cfg.lens.flange_focus_distance_mm = 629.5;
+cfg.lens.scan_field_mm = [240, 240];
+cfg.lens.scan_field_diagonal_mm = 339;
 
 cfg.grid.N = 1024;
 cfg.grid.focus_sampling_um = 5.0;
